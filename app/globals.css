@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --font-inter: 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-inter);
+    color: #1e293b;
+    background: #ffffff;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-anthrazit-200 bg-white px-5 py-2.5 text-sm font-semibold text-anthrazit-700 shadow-sm transition-all hover:bg-anthrazit-50 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:opacity-50;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50;
+  }
+
+  .input-field {
+    @apply block w-full rounded-lg border border-anthrazit-200 bg-white px-3.5 py-2.5 text-sm text-anthrazit-900 shadow-sm placeholder:text-anthrazit-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:bg-anthrazit-50;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-anthrazit-700 mb-1.5;
+  }
+
+  .card {
+    @apply rounded-xl border border-anthrazit-100 bg-white p-6 shadow-sm;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .badge-pending   { @apply badge bg-yellow-100 text-yellow-800; }
+  .badge-confirmed { @apply badge bg-blue-100 text-blue-800; }
+  .badge-paid      { @apply badge bg-green-100 text-green-800; }
+  .badge-completed { @apply badge bg-emerald-100 text-emerald-800; }
+  .badge-cancelled { @apply badge bg-red-100 text-red-800; }
+  .badge-rejected  { @apply badge bg-gray-100 text-gray-800; }
+  .badge-progress  { @apply badge bg-purple-100 text-purple-800; }
+
+  .section-title {
+    @apply text-3xl font-bold text-anthrazit-900 tracking-tight;
+  }
+
+  .section-subtitle {
+    @apply mt-4 text-lg text-anthrazit-500 leading-relaxed;
+  }
+}

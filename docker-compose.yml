@@ -1,0 +1,58 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Datenbank
+  postgres:
+    image: postgres:16-alpine
+    container_name: inseratcheck-db
+    environment:
+      POSTGRES_USER: inseratcheck
+      POSTGRES_PASSWORD: inseratcheck_dev_pass
+      POSTGRES_DB: inseratcheck
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inseratcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Next.js App (für Produktion)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: inseratcheck-app
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://inseratcheck:inseratcheck_dev_pass@postgres:5432/inseratcheck
+      NODE_ENV: production
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - production  # Nur mit: docker compose --profile production up
+
+  # pgAdmin (optional, für DB-Verwaltung)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: inseratcheck-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@inseratcheck.de
+      PGADMIN_DEFAULT_PASSWORD: pgadmin_pass
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:

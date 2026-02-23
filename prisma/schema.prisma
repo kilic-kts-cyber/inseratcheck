@@ -1,0 +1,305 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  KUNDE
+  WERKSTATT
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING        // Anfrage gestellt
+  CONFIRMED      // Werkstatt hat bestätigt
+  PAID           // Bezahlt - Auftrag aktiv
+  IN_PROGRESS    // Prüfung läuft
+  COMPLETED      // Bericht erstellt
+  CANCELLED      // Storniert
+  REJECTED       // Abgelehnt
+}
+
+enum CheckResult {
+  GUT
+  MITTEL
+  SCHLECHT
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum UploadType {
+  VIN_PHOTO
+  ODOMETER
+  OBD_SCREENSHOT
+  BRAKE_FRONT
+  BRAKE_REAR
+  BODY
+  HU_STICKER
+  OTHER
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String
+  role          Role      @default(KUNDE)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Kundenfelder
+  phone         String?
+  street        String?
+  zip           String?
+  city          String?
+  country       String?   @default("Deutschland")
+
+  // Relations
+  orders        Order[]   @relation("CustomerOrders")
+  workshop      Workshop?
+  sessions      Session[]
+
+  @@index([email])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+model Workshop {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  name          String
+  street        String
+  zip           String
+  city          String
+  lat           Float?
+  lng           Float?
+  phone         String?
+  website       String?
+  description   String?
+  openingHours  String?  // JSON string
+  capacity      Int      @default(3) // Aufträge pro Woche
+  isActive      Boolean  @default(false) // Admin muss freigeben
+  isVerified    Boolean  @default(false)
+  coverZips     String[] // Gebiets-PLZs
+  bankName      String?
+  iban          String?
+  bic           String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user             User             @relation(fields: [userId], references: [id])
+  orders           Order[]
+  vehicleHistories VehicleHistory[]
+
+  @@index([zip])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique
+  customerId      String
+  workshopId      String?
+  status          OrderStatus @default(PENDING)
+  
+  // Fahrzeugdaten vom Kunden
+  listingUrl      String?
+  make            String?
+  model           String?
+  year            Int?
+  mileage         Int?
+  price           Int?        // in Cent
+  vin             String?
+  
+  // Terminwunsch
+  preferredDate1  DateTime?
+  preferredDate2  DateTime?
+  preferredDate3  DateTime?
+  confirmedDate   DateTime?
+  
+  // Standort des Fahrzeugs
+  vehicleZip      String?
+  vehicleCity     String?
+  vehicleAddress  String?
+
+  // Preis & Zahlung
+  totalAmount     Int         @default(11800) // in Cent (118.00 €)
+  workshopAmount  Int         @default(7900)  // 79 €
+  platformAmount  Int         @default(3900)  // 39 €
+  paypalOrderId   String?
+  paypalPayerId   String?
+  paidAt          DateTime?
+  payoutStatus    PayoutStatus @default(PENDING)
+  payoutAt        DateTime?
+
+  // Notizen
+  customerNote    String?
+  workshopNote    String?
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  customer  User      @relation("CustomerOrders", fields: [customerId], references: [id])
+  workshop  Workshop? @relation(fields: [workshopId], references: [id])
+  checklist Checklist?
+  uploads   Upload[]
+  messages  Message[]
+
+  @@index([customerId])
+  @@index([workshopId])
+  @@index([orderNumber])
+}
+
+model Checklist {
+  id        String @id @default(cuid())
+  orderId   String @unique
+
+  // Fahrzeugdaten
+  vinConfirmed    String?
+  mileageConfirmed Int?
+  firstRegistration DateTime?
+
+  // OBD
+  obdErrors       Boolean?
+  obdNote         String?
+
+  // Bremsen
+  brakeFrontStatus  CheckResult?
+  brakeRearStatus   CheckResult?
+  brakeFluidOk      Boolean?
+  brakeNote         String?
+
+  // Reifen
+  tireFrontDepth    Float?  // mm
+  tireRearDepth     Float?  // mm
+  tireFrontDot      String?
+  tireRearDot       String?
+  tireUneven        Boolean?
+  tireNote          String?
+
+  // Fahrwerk/Lenkung
+  suspensionNoises  Boolean?
+  steeringPlay      Boolean?
+  suspensionNote    String?
+
+  // Motorraum
+  engineLeaks       Boolean?
+  engineNote        String?
+
+  // Karosserie/Lack
+  paintValues       String? // JSON: {fl: 90, fr: 88, ...}
+  accidentSuspect   Boolean?
+  bodyNote          String?
+
+  // HU/AU
+  huValid           DateTime?
+  huNote            String?
+
+  // Probefahrt
+  testDriveIssues   Boolean?
+  testDriveNote     String?
+
+  // Gesamturteil
+  overallResult     CheckResult?
+  overallComment    String?
+
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  order   Order    @relation(fields: [orderId], references: [id])
+  uploads Upload[]
+}
+
+model Upload {
+  id          String   @id @default(cuid())
+  orderId     String
+  checklistId String?
+  uploadedBy  String
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  uploadType  UploadType @default(OTHER)
+  path        String
+  createdAt   DateTime @default(now())
+
+  order     Order      @relation(fields: [orderId], references: [id])
+  checklist Checklist? @relation(fields: [checklistId], references: [id])
+
+  @@index([orderId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  orderId   String
+  senderId  String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+}
+
+model VehicleHistory {
+  id            String      @id @default(cuid())
+  vin           String
+  orderId       String      @unique
+  workshopId    String?
+  checkedAt     DateTime
+  mileage       Int?
+  overallResult CheckResult
+  make          String?
+  model         String?
+  year          Int?
+  workshopCity  String?
+
+  workshop Workshop? @relation(fields: [workshopId], references: [id])
+
+  @@index([vin])
+  @@index([workshopId])
+}
+
+model FaqItem {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  resource  String
+  resourceId String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([resource])
+}
